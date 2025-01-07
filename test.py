@@ -6,6 +6,7 @@ from adafruit_motor import servo
 import board
 import busio
 import time
+import serial
 
 # Initialize I2C bus and PCA9685
 i2c = busio.I2C(board.SCL, board.SDA)
@@ -33,6 +34,10 @@ mp_draw = mp.solutions.drawing_utils
 
 # Initialize webcam
 cap = cv2.VideoCapture(0)
+
+# Initialize serial communication
+ser = serial.Serial('/dev/serial0', 9600, timeout=1)
+ser.flush()
 
 def calculate_finger_angle(landmark1, landmark2, landmark3):
     """Calculate angle between three points"""
@@ -112,6 +117,9 @@ try:
                 servo_angle = map_angle_to_servo(angle)
                 servos[finger].angle = servo_angle
                 
+                # Send servo angles over UART
+                ser.write(f"{finger}:{servo_angle}\n".encode('utf-8'))
+                
                 # Display servo angles on screen
                 h, w, c = img.shape
                 landmark_idx = {"thumb": 4, "index": 8, "middle": 12, "ring": 16, "pinky": 20}
@@ -135,3 +143,4 @@ finally:
     cv2.destroyAllWindows()
     hands.close()
     pca.deinit()
+    ser.close()
