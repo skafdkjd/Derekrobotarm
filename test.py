@@ -1,26 +1,8 @@
 import cv2
 import mediapipe as mp
 import numpy as np
-from adafruit_pca9685 import PCA9685
-from adafruit_motor import servo
-import board
-import busio
 import time
 import serial
-
-# Initialize I2C bus and PCA9685
-i2c = busio.I2C(board.SCL, board.SDA)
-pca = PCA9685(i2c)
-pca.frequency = 50  # Set PWM frequency to 50Hz (standard for servos)
-
-# Create servo objects for each finger
-servos = {
-    "thumb": servo.Servo(pca.channels[0], min_pulse=600, max_pulse=2400),
-    "index": servo.Servo(pca.channels[1], min_pulse=600, max_pulse=2400),
-    "middle": servo.Servo(pca.channels[2], min_pulse=600, max_pulse=2400),
-    "ring": servo.Servo(pca.channels[3], min_pulse=600, max_pulse=2400),
-    "pinky": servo.Servo(pca.channels[4], min_pulse=600, max_pulse=2400)
-}
 
 # Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
@@ -112,12 +94,9 @@ try:
                 )
             }
             
-            # Control servos based on finger angles
+            # Send servo angles over UART
             for finger, angle in finger_angles.items():
                 servo_angle = map_angle_to_servo(angle)
-                servos[finger].angle = servo_angle
-                
-                # Send servo angles over UART
                 ser.write(f"{finger}:{servo_angle}\n".encode('utf-8'))
                 
                 # Display servo angles on screen
@@ -142,5 +121,4 @@ finally:
     cap.release()
     cv2.destroyAllWindows()
     hands.close()
-    pca.deinit()
     ser.close()
