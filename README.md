@@ -33,6 +33,19 @@
    ```bash
    python main.py
    ```
+## GPIO Connections
+Raspberry Pi       PCA9685
+---------------------------
+GPIO 2 (SDA)   -> SDA
+GPIO 3 (SCL)   -> SCL
+3.3V or 5V     -> VCC
+GND            -> GND
+
+Servo Motor Connections:
+---------------------------
+Servo Signal   -> PCA9685 PWM Channels (0 to 4)
+Servo Power    -> PCA9685 V+
+Servo Ground   -> PCA9685 GND
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file in the repository for full details.
