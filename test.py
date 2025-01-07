@@ -40,6 +40,12 @@ def map_angle_to_servo(angle, in_min=0, in_max=180, out_min=0, out_max=180):
     """Map angle to servo range"""
     return int((angle - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
+def move_servo(servo, angle):
+    """Send command to move servo by a specified angle"""
+    command = f"{servo}:{angle}\n"
+    ser.write(command.encode('utf-8'))
+    print(f"Sent command: {command.strip()}")
+
 try:
     while True:
         success, img = cap.read()
@@ -94,10 +100,10 @@ try:
                 )
             }
             
-            # Send servo angles over UART
+            # Control servos based on finger angles
             for finger, angle in finger_angles.items():
                 servo_angle = map_angle_to_servo(angle)
-                ser.write(f"{finger}:{servo_angle}\n".encode('utf-8'))
+                move_servo(finger, servo_angle)
                 
                 # Display servo angles on screen
                 h, w, c = img.shape
@@ -117,6 +123,11 @@ try:
             break
 
 finally:
+    # Test all servos by sending a command to move them by 5 degrees independently
+    for i in range(5):
+        move_servo(f"servo{i}", 5)  # Move each servo by 5 degrees
+        time.sleep(1)  # Wait for 1 second between commands
+
     # Cleanup
     cap.release()
     cv2.destroyAllWindows()
