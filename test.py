@@ -1,8 +1,25 @@
 import cv2
 import mediapipe as mp
 import numpy as np
+from adafruit_pca9685 import PCA9685
+from adafruit_motor import servo
+import board
+import busio
 import time
-import serial
+
+# Initialize I2C bus and PCA9685
+i2c = busio.I2C(board.SCL, board.SDA)
+pca = PCA9685(i2c)
+pca.frequency = 50  # Set PWM frequency to 50Hz (standard for servos)
+
+# Create servo objects for each finger
+servos = {
+    "thumb": servo.Servo(pca.channels[0], min_pulse=600, max_pulse=2400),
+    "index": servo.Servo(pca.channels[1], min_pulse=600, max_pulse=2400),
+    "middle": servo.Servo(pca.channels[2], min_pulse=600, max_pulse=2400),
+    "ring": servo.Servo(pca.channels[3], min_pulse=600, max_pulse=2400),
+    "pinky": servo.Servo(pca.channels[4], min_pulse=600, max_pulse=2400)
+}
 
 # Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
@@ -16,10 +33,6 @@ mp_draw = mp.solutions.drawing_utils
 
 # Initialize webcam
 cap = cv2.VideoCapture(0)
-
-# Initialize serial communication
-ser = serial.Serial('/dev/serial0', 9600, timeout=1)
-ser.flush()
 
 def calculate_finger_angle(landmark1, landmark2, landmark3):
     """Calculate angle between three points"""
@@ -39,12 +52,6 @@ def calculate_finger_angle(landmark1, landmark2, landmark3):
 def map_angle_to_servo(angle, in_min=0, in_max=180, out_min=0, out_max=180):
     """Map angle to servo range"""
     return int((angle - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
-
-def move_servo(servo, angle):
-    """Send command to move servo by a specified angle"""
-    command = f"{servo}:{angle}\n"
-    ser.write(command.encode('utf-8'))
-    print(f"Sent command: {command.strip()}")
 
 try:
     while True:
@@ -103,7 +110,7 @@ try:
             # Control servos based on finger angles
             for finger, angle in finger_angles.items():
                 servo_angle = map_angle_to_servo(angle)
-                move_servo(finger, servo_angle)
+                servos[finger].angle = servo_angle
                 
                 # Display servo angles on screen
                 h, w, c = img.shape
@@ -123,13 +130,8 @@ try:
             break
 
 finally:
-    # Test all servos by sending a command to move them by 5 degrees independently
-    for i in range(5):
-        move_servo(f"servo{i}", 5)  # Move each servo by 5 degrees
-        time.sleep(1)  # Wait for 1 second between commands
-
     # Cleanup
     cap.release()
     cv2.destroyAllWindows()
     hands.close()
-    ser.close()
+    pca.deinit()
