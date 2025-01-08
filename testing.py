@@ -15,10 +15,12 @@ pca.frequency = 50  # Set PWM frequency to 50Hz (standard for servos)
 
 # Create servo objects for each joint and an additional servo for the grab action
 servos = {
-    "shoulder": servo.Servo(pca.channels[0], min_pulse=600, max_pulse=2400),
-    "elbow": servo.Servo(pca.channels[1], min_pulse=600, max_pulse=2400),
-    "wrist": servo.Servo(pca.channels[2], min_pulse=600, max_pulse=2400),
-    "grab": servo.Servo(pca.channels[3], min_pulse=600, max_pulse=2400)  # Additional servo for grab action
+    "base": servo.Servo(pca.channels[0], min_pulse=600, max_pulse=2400),  # Base rotation
+    "shoulder": servo.Servo(pca.channels[1], min_pulse=600, max_pulse=2400),
+    "elbow": servo.Servo(pca.channels[2], min_pulse=600, max_pulse=2400),
+    "wrist": servo.Servo(pca.channels[3], min_pulse=600, max_pulse=2400),
+    "wrist_rotate": servo.Servo(pca.channels[4], min_pulse=600, max_pulse=2400),  # Wrist rotation
+    "grab": servo.Servo(pca.channels[5], min_pulse=600, max_pulse=2400)  # Additional servo for grab action
 }
 
 # Initialize MediaPipe Pose and Hands
@@ -41,9 +43,11 @@ mp_draw = mp.solutions.drawing_utils
 cap = cv2.VideoCapture(0)
 
 # Deques for smoothing angles
+base_angles = deque(maxlen=5)
 shoulder_angles = deque(maxlen=5)
 elbow_angles = deque(maxlen=5)
 wrist_angles = deque(maxlen=5)
+wrist_rotate_angles = deque(maxlen=5)
 
 def calculate_angle(a, b, c):
     """Calculate the angle between three points"""
@@ -91,26 +95,35 @@ try:
             shoulder = [landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x, landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y]
             elbow = [landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].x, landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].y]
             wrist = [landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].x, landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].y]
+            hip = [landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].x, landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].y]
             
             # Calculate angles
+            base_angle = calculate_angle(hip, shoulder, elbow)
             shoulder_angle = calculate_angle(shoulder, elbow, wrist)
             elbow_angle = calculate_angle(elbow, shoulder, wrist)
             wrist_angle = calculate_angle(wrist, elbow, shoulder)
+            wrist_rotate_angle = calculate_angle(elbow, wrist, [wrist[0], wrist[1] + 0.1])  # Simplified wrist rotation
             
             # Smooth angles
+            base_angle = smooth_angle(base_angle, base_angles)
             shoulder_angle = smooth_angle(shoulder_angle, shoulder_angles)
             elbow_angle = smooth_angle(elbow_angle, elbow_angles)
             wrist_angle = smooth_angle(wrist_angle, wrist_angles)
+            wrist_rotate_angle = smooth_angle(wrist_rotate_angle, wrist_rotate_angles)
             
             # Map angles to servo range
+            base_servo_angle = map_angle_to_servo(base_angle)
             shoulder_servo_angle = map_angle_to_servo(shoulder_angle)
             elbow_servo_angle = map_angle_to_servo(elbow_angle)
             wrist_servo_angle = map_angle_to_servo(wrist_angle)
+            wrist_rotate_servo_angle = map_angle_to_servo(wrist_rotate_angle)
             
             # Control servos
+            servos["base"].angle = base_servo_angle
             servos["shoulder"].angle = shoulder_servo_angle
             servos["elbow"].angle = elbow_servo_angle
             servos["wrist"].angle = wrist_servo_angle
+            servos["wrist_rotate"].angle = wrist_rotate_servo_angle
             
             # Draw landmarks and connections
             mp_draw.draw_landmarks(img, results_pose.pose_landmarks, mp_pose.POSE_CONNECTIONS)
