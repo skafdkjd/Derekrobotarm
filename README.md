@@ -1,4 +1,4 @@
-# Robotic Arm Control with MediaPipe and PCA9685
+# Robotic Arm Control
 
 This project uses MediaPipe Pose and Hands to control a robotic arm with servos. The robotic arm mimics the movements of a human arm and detects hand gestures to control an additional servo for grabbing actions.
 
